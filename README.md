@@ -61,4 +61,84 @@ Choose option 1. The script then does the following, in order:
 PRE-FLIGHT CHECKS. It confirms python3 and zip are installed and prints the python3 version (python3 --version). It then confirms attendance_checker.py, assets.csv and config.json exist in templates/. If anything is missing it prints a clear ERROR message and returns to the menu without creating anything.
 PROJECT NAME. It asks for a project name and builds the folder name attendance_tracker_{name}. An empty name is rejected. If that folder already exists, it asks "Overwrite? (y/n)". Typing y deletes the old folder and continues. Anything else cancels with "Cancelled. Nothing changed." and the existing project is left untouched.
 DIRECTORY STRUCTURE. It creates the structure the application expects:
+attendance_tracker_{name}/
+├── attendance_checker.py
+├── Helpers/
+│   ├── assets.csv
+│   └── config.json
+└── reports/              # starts empty; the app creates the logs here
 
+If a folder cannot be created (for example a permissions problem), it prints an error, removes the half-built project and returns to the menu.
+
+COPY THE UNMODIFIED FILES. attendance_checker.py and config.json are copied from templates/ exactly as they are. Each copy is checked, and a failure is reported.
+BUILD THE ROSTER (Helpers/assets.csv). The script asks how the roster should be built:
+Option A: copy from the template. It asks how many students and copies that many rows, plus the header, from templates/assets.csv. The sample students each already have 4 recorded sessions.
+Option B: generate a fresh roster. It asks how many students and builds that many rows directly in the script from arrays of sample names and emails. Attendance Count and Absence Count start at 0. Only 10 sample names are built in, so a larger number is capped at 10 with a message.
+The choice must be A or B (either case), and the student count must be a whole number of 1 or more. Invalid input re-prompts instead of crashing.
+SET PERMISSIONS. attendance_checker.py is made executable (chmod +x) and Helpers/config.json is restricted to owner read/write only (chmod 600), because it controls the grading thresholds. The script prints the result with ls -l as confirmation.
+OFFER TO UPDATE THE THRESHOLDS (see the next section).
+VERIFY THE DEPLOYMENT. The deploy feature finishes by launching the application (Feature 2). A successful start proves the structure, roster and config work together.
+HOW THE THRESHOLD UPDATE WORKS
+
+After the permissions step the script asks "Update alert thresholds? (y/n)". If the answer is not y, the defaults in config.json stay as they are.
+
+If the answer is y, the script asks for two values:
+
+Warning threshold [75]
+Failure threshold [50]
+
+How the input is handled:
+
+Pressing Enter on an empty answer uses the default shown in brackets (75 and 50).
+Both values are checked to be whole numbers before anything is written. If either is not a number, the script prints "Invalid input (numbers only). Keeping the defaults." and config.json is not touched.
+If both are valid, sed edits the deployed Helpers/config.json in place. It targets only the "warning": <number> and "failure": <number> lines, so the file is not reformatted or reordered.
+
+Example of the two lines before and after choosing 80 and 60:
+
+"warning": 75,      ->      "warning": 80,
+"failure": 50       ->      "failure": 60
+
+The threshold update only changes the deployed copy in attendance_tracker_{name}/Helpers/. The original templates/config.json is never modified.
+
+HOW total_sessions STAYS CONSISTENT WITH THE ROSTER
+
+config.json has a total_sessions value that must always be one more than the number of prior sessions recorded in the roster (today's session counts too). The script sets it automatically, so there is no prompt for it:
+
+Roster option	Prior sessions per student	total_sessions set by the script
+A (copied)	4	5
+B (generated)	0	1
+
+The value is written with sed right after the roster is built.
+
+HOW TO RUN THE GENERATED APP (FEATURE 2)
+
+From the menu, choose option 2 and enter the project name. The script checks that attendance_tracker_{name} exists, changes into it and runs the app. The same thing can be done by hand:
+
+cd attendance_tracker_{name}
+python3 attendance_checker.py
+
+The app is interactive. It prompts the instructor to mark each student present or absent, updates the counts in Helpers/assets.csv, applies the thresholds in Helpers/config.json, and writes the session logs into reports/:
+
+reports/attendance.log
+reports/absent.log (only created if at least one student was absent)
+
+If the project does not exist, the script prints "ERROR: ... does not exist. Deploy it first." and returns to the menu.
+
+HOW LOG ARCHIVING WORKS (FEATURE 3)
+
+After a marking session, choose option 3 and enter the project name. The script checks whether each log exists and archives each one into its own directory with a timestamp in the filename:
+
+attendance_tracker_{name}/
+└── archives/
+    ├── attendance/
+    │   └── attendance_20261012_143022.log
+    └── absent/
+        └── absent_20261012_143022.log
+The filename format is {log}_YYYYMMDD_HHMMSS.log, taken from the system clock when the archive runs. Every archived copy is therefore unique and traceable.
+The archive directories (archives/attendance and archives/absent) are created automatically if they do not exist.
+Each log is copied, not moved, so the original stays in reports/. Running the archive again later creates a new timestamped copy.
+For each log the script prints "Archived: <final path>".
+If a log does not exist (for example nobody was absent, so there is no absent.log), the script prints "No absent.log found - skipped." and carries on. It does not crash.
+HOW TO TRIGGER THE ARCHIVE-ON-INTERRUPT FEATURE
+
+While the Deploy feature is running, press Ctrl+C (SIGINT) or Ctrl+Z (SIGTSTP). Ctrl+Z would normally freeze the script, but the script traps both signals and treats them the same way.
