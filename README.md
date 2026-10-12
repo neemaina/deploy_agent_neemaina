@@ -142,3 +142,84 @@ If a log does not exist (for example nobody was absent, so there is no absent.lo
 HOW TO TRIGGER THE ARCHIVE-ON-INTERRUPT FEATURE
 
 While the Deploy feature is running, press Ctrl+C (SIGINT) or Ctrl+Z (SIGTSTP). Ctrl+Z would normally freeze the script, but the script traps both signals and treats them the same way.
+
+On either signal the script:
+
+Prints "Deployment interrupted!"
+Zips whatever exists so far of attendance_tracker_{name}/ into attendance_tracker_{name}_archive.zip, in the same folder as the script.
+Deletes the incomplete attendance_tracker_{name}/ directory so no half-made project is left behind. The zip is created first and the folder is deleted second.
+Prints a confirmation and exits cleanly (exit code 1).
+
+If the signal arrives before the project folder exists (during the pre-flight checks or at the name prompt), there is nothing to save, so the script reports that and exits. The project folder is only registered for cleanup after the overwrite question has been answered, so interrupting at that prompt can never delete an existing project.
+
+The trap is active only while the script is deploying. It is switched off as soon as the build finishes, and also if a deployment step fails, so Ctrl+C works normally during the live marking session and at the menu.
+
+HOW TO READ THE ARCHIVE
+
+The archive is a compressed binary .zip file. Do not open it in a text editor, because it will look like scrambled symbols. Use unzip instead. The two commands you can use are:
+
+unzip -l attendance_tracker_{name}_archive.zip     # list contents
+unzip attendance_tracker_{name}_archive.zip        # extract it back
+
+If unzip is not installed, install it with sudo apt install unzip.
+
+The contents depend on how far the deployment got when it was interrupted. For example, an interruption after the files were copied lists something like:
+
+attendance_tracker_{name}/
+attendance_tracker_{name}/attendance_checker.py
+attendance_tracker_{name}/reports/
+attendance_tracker_{name}/Helpers/
+attendance_tracker_{name}/Helpers/config.json
+
+An interruption later in the run also includes Helpers/assets.csv.
+
+HOW TO TEST THE CTRL+C / CTRL+Z PATH
+Start the script with a delay: DELAY=3 ./deploy_agent.sh
+Choose 1 (Deploy), enter a project name, then wait until "Created folders." appears.
+Press Ctrl+C. (Repeat the whole test once more and press Ctrl+Z instead.)
+Confirm the script printed "Deployment interrupted!", reported the saved archive, and returned to the shell.
+Run ls and confirm attendance_tracker_{name}archive.zip exists and the attendance_tracker{name}/ folder is gone.
+Run unzip -l attendance_tracker_{name}_archive.zip and confirm it holds the partial project.
+
+Expected result: a .zip archive of the partial project, and no leftover half-made directory.
+
+HOW THE DEPLOYED STRUCTURE WAS TESTED
+
+After a deployment, the structure, permissions, roster and config were checked with these commands:
+
+ls -R attendance_tracker_{name}                              # folders and files match the required structure
+ls -l attendance_tracker_{name}/attendance_checker.py        # shows -rwx... (executable)
+ls -l attendance_tracker_{name}/Helpers/config.json          # shows -rw------- (owner only)
+cat attendance_tracker_{name}/Helpers/config.json            # thresholds and total_sessions are correct
+cat attendance_tracker_{name}/Helpers/assets.csv             # header plus the requested number of students
+
+Both deployment paths were tested:
+
+Test	What was checked
+Option A (copy), e.g. 4 students	assets.csv has 5 lines (header + 4 rows); total_sessions is 5
+Option B (generate), e.g. 3	rows end in 0,0; total_sessions is 1
+Thresholds changed (80 and 60)	only the warning and failure lines changed
+Thresholds invalid ("abc")	script rejects the input and config.json keeps 75 and 50
+Thresholds left empty	defaults 75 and 50 are applied
+Existing project, answer n	"Cancelled. Nothing changed." and the old folder is untouched
+Run after deploy	app starts, and reports/ is filled after a short marking session
+Archive after a run	timestamped files appear in archives/attendance and archives/absent
+Archive with no absent.log	"No absent.log found - skipped." and no crash
+Ctrl+C and Ctrl+Z during deploy	.zip created, incomplete folder removed
+EDGE CASES HANDLED
+python3, zip, or a template file is missing
+Empty project name
+Project already exists: overwrite or cancel
+A folder cannot be created or a file cannot be copied
+Roster option other than A or B
+Student count that is not a number, or is less than 1
+More students requested than the 10 sample names (capped at 10)
+Empty threshold input (defaults are used)
+Non-numeric threshold input (rejected, config unchanged)
+Ctrl+C or Ctrl+Z before anything exists, or partway through the build
+Running or archiving a project that was never deployed
+A missing attendance.log or absent.log when archiving
+KNOWN LIMITATIONS
+Threshold values are checked to be numeric but not to be within 0 to 100, and failure is not required to be lower than warning.
+The overwrite and threshold prompts accept a lowercase y only.
+Archiving copies the logs rather than moving them, so a later archive can include earlier sessions if the app appends to its logs.
