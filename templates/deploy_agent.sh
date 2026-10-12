@@ -3,27 +3,22 @@
 # deploy_agent.sh - deploy, run and archive the Attendance Tracker
 
 #menu: 1) Deploy 2) Run 3) Archive logs 4) Exit
-# Test with Ctrl+C / Ctrl+Z: DELA Y=3 ./deploy_agent.sh
+# Test with Ctrl+C / Ctrl+Z: DELAY=3 ./deploy_agent.sh
 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATES_DIR="$SCRIPT_DIR/templates"
 
 cd "$SCRIPT_DIR" || exit 1
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
+ 
 # Pre-flight checks
 
 
-  Check_requirements() {
+  check_requirements() {
 	echo
 	echo "Checking required programs..."
 
-	 if ! command -v python3 >/dev/null 2>&1
+ if ! command -v python3 >/dev/null 2>&1
     then
         echo "ERROR: python3 is not installed."
         return 1
@@ -34,7 +29,7 @@ die() {
         echo "ERROR: zip is not installed."
         return 1
     fi
-
+python3 --version
     echo "python3: available"
     echo "zip: available"
 
@@ -43,7 +38,7 @@ die() {
 }
 
   
-   Check_templates() { 
+   check_templates() { 
        echo
     echo "Checking template files..."
 
