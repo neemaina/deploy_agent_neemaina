@@ -270,7 +270,7 @@ archive_logs() {
     fi
  
 
-    stamp=$(date+ID)
+    stamp=$(date +%Y%m%d_%H%M%S)
 
 
    for log in attendance absent; do
