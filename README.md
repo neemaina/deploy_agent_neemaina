@@ -224,4 +224,5 @@ Threshold values are checked to be numeric but not to be within 0 to 100, and fa
 The overwrite and threshold prompts accept a lowercase y only.
 Archiving copies the logs rather than moving them, so a later archive can include earlier sessions if the app appends to its logs.
 
-THE VIDEO LINK:C:\Users\Lenovo\OneDrive\Videos\Video explanation of my script.mkv
+THE VIDEO LINK: https://1drv.ms/v/c/cb85792e17d10e2d/IQArqiXIvpSeSJBng7GxFrrsAf3fsymPbKW2qq9LQ8pdzPs?e=ZMMqim
+
