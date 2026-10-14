@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # deploy_agent.sh - deploy, run and archive the Attendance Tracker
 
 #menu: 1) Deploy 2) Run 3) Archive logs 4) Exit
